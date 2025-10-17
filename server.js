@@ -5,6 +5,12 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import pool from './backend/config/db.js';
 import arcjetMiddleware from './backend/middlewares/arcjetMiddleware.js';
+import createUsersTable from './backend/data/createUsersTable.js';
+import createProductsTable from './backend/data/createProductsTable.js';
+import createCartsItemTable from './backend/data/createCartsItemTable.js';
+import createOrdersTable from './backend/data/createOrdersTable.js';
+import errorHandling from './backend/middlewares/errorHandling.js';
+import createOrderItemsTable from './backend/data/createOrderItemsTable.js';
 
 
 // Load environment variables from .env file
@@ -26,6 +32,26 @@ app.get('/', (req, res) => {
     res.send('E-commerce Application Server is running');
 });
 
+// Error handling middleware
+app.use(errorHandling);
+
+
+// Initialize database and create tables
+try {
+  // Enable pgcrypto extension for UUID generation
+  await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`);
+
+  // Create tables
+  await createUsersTable();
+  await createProductsTable();
+  await createCartsItemTable();
+  await createOrdersTable();
+  await createOrderItemsTable();
+
+  console.log("All tables initialized successfully.");
+} catch (err) {
+  console.error("Error during database setup:", err);
+}
 
 // Start the server
 app.listen(PORT, () => {
