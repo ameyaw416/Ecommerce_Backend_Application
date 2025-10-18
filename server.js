@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import pool from './backend/config/db.js';
 import arcjetMiddleware from './backend/middlewares/arcjetMiddleware.js';
 import createUsersTable from './backend/data/createUsersTable.js';
@@ -12,6 +13,8 @@ import createOrdersTable from './backend/data/createOrdersTable.js';
 import errorHandling from './backend/middlewares/errorHandling.js';
 import createOrderItemsTable from './backend/data/createOrderItemsTable.js';
 import authRoute from './backend/routes/authRoute.js';
+import verifyAuth from './backend/middlewares/verifyAuth.js';
+
 
 
 
@@ -28,9 +31,12 @@ app.use(express.json());
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(arcjetMiddleware); // Apply Arcjet middleware globally
+app.use(cookieParser());
 
 // Routes
+//app.use(verifyAuth); // Protect all routes below this line
 app.use('/api/auth', authRoute);
+//app.use('/api/orders', verifyAuth, ordersRoute);
 
 // Error handling middleware
 app.use(errorHandling);

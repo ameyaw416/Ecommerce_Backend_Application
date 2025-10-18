@@ -2,11 +2,9 @@
 import pool from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-//import {JWT_SECRET, JWT_REFRESH_SECRET} from '../config/config.js';
+import { createAccessToken, createRefreshToken } from '../utils/tokenUtils.js';
 
-
-
-//standardized response messages
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 10;
 
 
 
@@ -55,6 +53,20 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
+    const payload = { userId: user.id, email: user.email };
+
+    const accessToken = createAccessToken(payload);
+    const refreshToken = createRefreshToken(payload);
+
+    // Send refresh token as HttpOnly cookie
+    res.cookie('jid', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // true in prod (HTTPS)
+      sameSite: 'strict',
+      path: '/api/auth/refresh', // only sent to this path
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     // Login successful
     res.status(200).json({
       message: 'Login successful',
@@ -68,6 +80,30 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+
+// Refresh access token (reads refresh token from cookie)
+
+export const refreshToken = async (req, res, next) => {
+  try {
+    const token = req.cookies?.jid;
+    if (!token) return res.status(401).json({ message: 'No refresh token provided' });
+
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: 'Invalid or expired refresh token' });
+    }
+
+    // continue with your logic here...
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 
 
 // User logout response
