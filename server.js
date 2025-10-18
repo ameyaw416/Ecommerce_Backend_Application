@@ -11,6 +11,8 @@ import createCartsItemTable from './backend/data/createCartsItemTable.js';
 import createOrdersTable from './backend/data/createOrdersTable.js';
 import errorHandling from './backend/middlewares/errorHandling.js';
 import createOrderItemsTable from './backend/data/createOrderItemsTable.js';
+import authRoute from './backend/routes/authRoute.js';
+
 
 
 // Load environment variables from .env file
@@ -28,9 +30,7 @@ app.use(morgan('dev'));
 app.use(arcjetMiddleware); // Apply Arcjet middleware globally
 
 // Routes
-app.get('/', (req, res) => {
-    res.send('E-commerce Application Server is running');
-});
+app.use('/api/auth', authRoute);
 
 // Error handling middleware
 app.use(errorHandling);
