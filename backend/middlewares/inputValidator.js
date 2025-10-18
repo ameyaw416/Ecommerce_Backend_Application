@@ -11,6 +11,7 @@ export const loginSchema = Joi.object({
   password: Joi.string().min(6).required(),
 });
 
+// Higher-order function that takes a schema and returns middleware
 export function validateBody(schema) {
   return (req, res, next) => {
     const { error } = schema.validate(req.body);

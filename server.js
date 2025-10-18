@@ -43,6 +43,8 @@ app.use(errorHandling);
 
 
 // Initialize database and create tables
+async function init() {
+    
 try {
   // Enable pgcrypto extension for UUID generation
   await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`);
@@ -63,3 +65,6 @@ try {
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
+}
+
+init();

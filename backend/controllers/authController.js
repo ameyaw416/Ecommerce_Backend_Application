@@ -59,7 +59,7 @@ export const loginUser = async (req, res) => {
     const accessToken = createAccessToken(payload);
     const refreshToken = createRefreshToken(payload);
 
-    // Send refresh token as HttpOnly cookie
+    // Set refresh token as HttpOnly cookie
     res.cookie('jid', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production', // true in prod (HTTPS)
@@ -71,10 +71,7 @@ export const loginUser = async (req, res) => {
     // Login successful
     res.status(200).json({
       message: 'Login successful',
-      user: {
-        id: user.id,
-        email: user.email
-      }
+      user: {id: user.id, email: user.email}
     });
   } catch (error) {
     console.error(error);
@@ -83,8 +80,7 @@ export const loginUser = async (req, res) => {
 };
 
 
-// Refresh access token (reads refresh token from cookie)
-
+/// Refresh access token (reads refresh token from cookie)
 export const refreshToken = async (req, res, next) => {
   try {
     const token = req.cookies?.jid;
@@ -97,19 +93,46 @@ export const refreshToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid or expired refresh token' });
     }
 
-    // continue with your logic here...
+    // Check if user still exists
+    const result = await pool.query('SELECT id, email FROM users WHERE id = $1', [payload.userId]);
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: 'User no longer exists' });
+    }
+
+    const user = result.rows[0];
+    const newPayload = { userId: user.id, email: user.email };
+
+    const newAccessToken = createAccessToken(newPayload);
+    const newRefreshToken = createRefreshToken(newPayload);
+
+    
+    {
+      // Rotate refresh token (optional but recommended)
+      res.cookie('jid', newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/api/auth/refresh',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.status(200).json({
+        accessToken: newAccessToken,
+        user: { id: user.id, email: user.email }
+      });
+    } 
 
   } catch (error) {
     next(error);
   }
-};
-
+}; 
 
 
 
 // User logout response
 export const logoutUser = (req, res) => {
-  // For JWT, logout can be handled on the client side by deleting the token
+  // Clear cookie on logout
+  res.clearCookie('jid', { path: '/' });
   res.status(200).json({ message: 'Logout successful' });
-};      
+};   
 
