@@ -1,0 +1,100 @@
+
+import * as userModel from '../models/userModel.js';
+import bcrypt from 'bcryptjs';
+
+
+
+
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 10;
+
+// Get all users
+export const getAllUsers = async (req, res, next) => {
+  try {
+    const users = await userModel.getAllUsers();
+    res.status(200).json(users);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//Get current user profile
+export const getMyProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const user = await userModel.getUserById(userId);
+    res.status(200).json(user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get user by ID
+export const getUserById = async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+    const user = await userModel.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+// Update user by ID
+export const updateUser = async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+    const { username, email, password } = req.body;
+    const hashedPassword = password ? await bcrypt.hash(password, BCRYPT_ROUNDS) : undefined;
+
+    const updatedUser = await userModel.updateUserById(
+      userId,
+      username,
+      email,
+      hashedPassword
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update my profile
+export const updateMyProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { username, email, password } = req.body;
+    const hashedPassword = password ? await bcrypt.hash(password, BCRYPT_ROUNDS) : undefined;
+
+    const updatedUser = await userModel.updateUserById(
+      userId,
+      username,
+      email,
+      hashedPassword
+    );
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete user by ID
+export const deleteUser = async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+    await userModel.deleteUserById(userId);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};

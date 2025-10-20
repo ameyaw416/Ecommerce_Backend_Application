@@ -1,14 +1,25 @@
 import Joi from 'joi';
 
+// Define validation schemas
+
+// Registration schema
 export const registerSchema = Joi.object({
   username: Joi.string().min(3).max(50).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
 });
 
+// Login schema
 export const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
+});
+
+//update user schema
+export const updateUserSchema = Joi.object({
+  username: Joi.string().min(3).max(50),
+  email: Joi.string().email(),
+  password: Joi.string().min(6),
 });
 
 // Higher-order function that takes a schema and returns middleware

@@ -14,6 +14,7 @@ import errorHandling from './backend/middlewares/errorHandling.js';
 import createOrderItemsTable from './backend/data/createOrderItemsTable.js';
 import authRoute from './backend/routes/authRoute.js';
 import verifyAuth from './backend/middlewares/verifyAuth.js';
+import usersRoute from './backend/routes/usersRoute.js';
 
 
 
@@ -35,7 +36,8 @@ app.use(cookieParser());
 
 // Routes
 //app.use(verifyAuth); // Protect all routes below this line
-app.use('/api/auth', authRoute);
+app.use('/api/auth', verifyAuth, authRoute);
+app.use('/api/users', verifyAuth, usersRoute);
 //app.use('/api/orders', verifyAuth, ordersRoute);
 
 // Error handling middleware
