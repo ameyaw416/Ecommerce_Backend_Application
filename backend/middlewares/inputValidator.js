@@ -22,6 +22,14 @@ export const updateUserSchema = Joi.object({
   password: Joi.string().min(6),
 });
 
+// Product schema
+export const productSchema = Joi.object({
+  name: Joi.string().min(1).max(100).required(),
+  description: Joi.string().max(500).required(),
+  price: Joi.number().positive().required(),
+  stock: Joi.number().integer().min(0).required(),
+});
+
 // Higher-order function that takes a schema and returns middleware
 export function validateBody(schema) {
   return (req, res, next) => {

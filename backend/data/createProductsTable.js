@@ -9,9 +9,10 @@ const createProductsTable = async () => {
       description TEXT,
       price DECIMAL(10, 2) NOT NULL,
       stock INT DEFAULT 0,
+      image_url TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-  `; // ✅ removed the extra parenthesis before the semicolon
+  `; // 
 
   try {
     await pool.query(createTableQuery);

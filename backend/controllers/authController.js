@@ -132,7 +132,7 @@ export const refreshToken = async (req, res, next) => {
 // User logout response
 export const logoutUser = (req, res) => {
   // Clear cookie on logout
-  res.clearCookie('jid', { path: '/' });
+  res.clearCookie('jid', { path: '/api/auth/refresh' });
   res.status(200).json({ message: 'Logout successful' });
 };   
 
