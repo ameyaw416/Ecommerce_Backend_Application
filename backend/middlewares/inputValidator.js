@@ -36,6 +36,28 @@ export const cartItemSchema = Joi.object({
   quantity: Joi.number().integer().min(1).required(),
 });
 
+// Order schema
+export const orderSchema = Joi.object({
+  userId: Joi.string().uuid().required(),
+  totalAmount: Joi.number().positive().required(),
+  items: Joi.array().items(
+    Joi.object({
+      productId: Joi.string().uuid().required(),
+      quantity: Joi.number().integer().min(1).required(),
+      price: Joi.number().positive().required(),
+    })
+  ).min(1).required(),
+});
+
+// shipping address schema
+export const shippingAddressSchema = Joi.object({
+  street: Joi.string().max(100).required(),
+  city: Joi.string().max(50).required(),
+  state: Joi.string().max(50).required(),
+  zipCode: Joi.string().max(20).required(),
+  country: Joi.string().max(50).required(),
+});
+
 // Higher-order function that takes a schema and returns middleware
 export function validateBody(schema) {
   return (req, res, next) => {
