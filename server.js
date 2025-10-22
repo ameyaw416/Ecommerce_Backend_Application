@@ -16,6 +16,7 @@ import authRoute from './backend/routes/authRoute.js';
 import verifyAuth from './backend/middlewares/verifyAuth.js';
 import usersRoute from './backend/routes/usersRoute.js';
 import productsRoute from './backend/routes/productsRoute.js';
+import cartRoute from './backend/routes/cartRoute.js';
 
 
 
@@ -40,6 +41,7 @@ app.use(cookieParser());
 app.use('/api/auth',authRoute);
 app.use('/api/users', verifyAuth, usersRoute);
 app.use('/api/products', verifyAuth, productsRoute);
+app.use('/api/cart', verifyAuth, cartRoute);
 //app.use('/api/orders', verifyAuth, ordersRoute);
 
 // Error handling middleware

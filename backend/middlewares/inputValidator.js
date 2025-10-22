@@ -30,6 +30,12 @@ export const productSchema = Joi.object({
   stock: Joi.number().integer().min(0).required(),
 });
 
+// Cart item schema
+export const cartItemSchema = Joi.object({
+  productId: Joi.number().integer().required(),
+  quantity: Joi.number().integer().min(1).required(),
+});
+
 // Higher-order function that takes a schema and returns middleware
 export function validateBody(schema) {
   return (req, res, next) => {
