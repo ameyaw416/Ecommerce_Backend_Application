@@ -1,7 +1,7 @@
 // authentication routes
 import express from 'express';
 import { registerUser, loginUser, logoutUser, refreshToken,} from '../controllers/authController.js';
-import validateBody,{registerSchema, loginSchema} from '../middlewares/inputValidator.js';
+import validateBody,{registerSchema, loginSchema} from '../middlewares/inputValidatorMiddleware.js';
 
 const router = express.Router();
 
