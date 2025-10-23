@@ -1,10 +1,11 @@
-// orderController.js
+// controllers/orderController.js
 import * as orderModel from '../models/orderModel.js';
 
 // Function to create a new order
 export const createOrder = async (req, res) => {
-  const userId = req.user.id; // Get from JWT token, not req.body
+  const userId = req.user?.id; // Get from JWT token, not req.body
   const { items, shippingAddress } = req.body;
+
 
   try {
     const { order, orderId, totalAmount } = await orderModel.createOrder(userId, items, shippingAddress);
@@ -16,15 +17,27 @@ export const createOrder = async (req, res) => {
       order,
     });
   } catch (error) {
-    console.error('Error creating order (controller):', error);
-    
+    console.error('Error creating order (controller):', error && error.stack ? error.stack : error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Function to get all orders (admin)
+export const getAllOrders = async (req, res) => {
+  try {
+    const orders = await orderModel.getAllOrders();
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error fetching all orders (admin):', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
 // Function to get orders by authenticated user
 export const getOrdersByUser = async (req, res) => {
-  const userId = req.user.id; // Get from JWT token, NOT from params
+  const userId = req.user?.id; // Get from JWT token, NOT from params
+
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     const orders = await orderModel.getOrdersByUser(userId);
@@ -37,8 +50,10 @@ export const getOrdersByUser = async (req, res) => {
 
 // Function to get a specific order by ID
 export const getOrderById = async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.user?.id;
   const { orderId } = req.params;
+
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     const order = await orderModel.getOrderById(orderId, userId);
