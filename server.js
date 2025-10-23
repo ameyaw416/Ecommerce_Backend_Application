@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import pool from './backend/config/db.js';
-import arcjetMiddleware from './backend/middlewares/arcjetMiddleware.js';
+import { generalLimiter, authLimiter } from './backend/middlewares/rateLimiterMiddleware.js';
 import createUsersTable from './backend/data/createUsersTable.js';
 import createProductsTable from './backend/data/createProductsTable.js';
 import createCartsItemTable from './backend/data/createCartsItemTable.js';
@@ -34,12 +34,12 @@ app.use(cors());
 app.use(express.json());
 app.use(helmet());
 app.use(morgan('dev'));
-app.use(arcjetMiddleware); // Apply Arcjet middleware globally
 app.use(cookieParser());
+app.use(generalLimiter); // Apply general rate limiter to all requests
 
 // Routes
 //app.use(verifyAuth); // Protect all routes below this line
-app.use('/api/auth',authRoute);
+app.use('/api/auth',authLimiter, authRoute);
 app.use('/api/users', verifyAuth, usersRoute);
 app.use('/api/products', verifyAuth, productsRoute);
 app.use('/api/cart', verifyAuth, cartRoute);
