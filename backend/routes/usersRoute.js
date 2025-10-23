@@ -1,7 +1,7 @@
 //creating users routes
 
 import express from 'express';
-import verifyAuth from '../middlewares/verifyAuth.js';
+import verifyAuth from '../middlewares/verifyAuthMiddleware.js';
 import { getAllUsers, getUserById, updateUser, deleteUser, getMyProfile, updateMyProfile } from '../controllers/usersController.js';
 
 const router = express.Router();

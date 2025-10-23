@@ -1,7 +1,7 @@
 // creating productsRoute.js file
 import express from 'express';
 import { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct } from '../controllers/productsController.js';
-import verifyAuth from '../middlewares/verifyAuth.js';
+import verifyAuth from '../middlewares/verifyAuthMiddleware.js';
 
 const router = express.Router();
 

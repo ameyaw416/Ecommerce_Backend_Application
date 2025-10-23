@@ -1,7 +1,7 @@
 //creating cart route
 import express from 'express';
 import { addItemToCart, getCartItems, removeItemFromCart, updateCartItemQuantity } from '../controllers/cartController.js';
-import verifyAuth from '../middlewares/verifyAuth.js';
+import verifyAuth from '../middlewares/verifyAuthMiddleware.js';
 
 const router = express.Router();
 

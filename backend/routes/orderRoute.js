@@ -1,7 +1,7 @@
 // routes/orderRoute.js
 // import necessary modules and controllers
 import { createOrder, getOrdersByUser,getAllOrders, getOrderById } from '../controllers/orderController.js';
-import verifyAuth from '../middlewares/verifyAuth.js';
+import verifyAuth from '../middlewares/verifyAuthMiddleware.js';
 
 import express from 'express';
 

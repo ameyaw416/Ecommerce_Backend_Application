@@ -13,7 +13,7 @@ import createOrdersTable from './backend/data/createOrdersTable.js';
 import errorHandling from './backend/middlewares/errorHandling.js';
 import createOrderItemsTable from './backend/data/createOrderItemsTable.js';
 import authRoute from './backend/routes/authRoute.js';
-import verifyAuth from './backend/middlewares/verifyAuth.js';
+import verifyAuth from './backend/middlewares/verifyAuthMiddleware.js';
 import usersRoute from './backend/routes/usersRoute.js';
 import productsRoute from './backend/routes/productsRoute.js';
 import cartRoute from './backend/routes/cartRoute.js';
