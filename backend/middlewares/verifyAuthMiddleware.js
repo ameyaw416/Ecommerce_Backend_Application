@@ -14,7 +14,7 @@ export default function verifyAuth(req, res, next) {
     console.log('verifyAuth - secret present?', !!process.env.JWT_ACCESS_SECRET);
 
     const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-    req.user = { id: payload.userId, email: payload.email };
+    req.user = { id: payload.userId, email: payload.email, role: payload.role || 'user'}; // attach user info to request
     next();
   } catch (err) {
    console.error('verifyAuth - jwt verify error:', err && err.message ? err.message : err);

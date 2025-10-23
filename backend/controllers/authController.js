@@ -54,7 +54,7 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    const payload = { userId: user.id, email: user.email };
+    const payload = { userId: user.id, email: user.email, role: user.role };
 
     const accessToken = createAccessToken(payload);
     const refreshToken = createRefreshToken(payload);

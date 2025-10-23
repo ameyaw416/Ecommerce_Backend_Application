@@ -103,3 +103,15 @@ export const createOrder = async (userId, items, shippingAddress) => {
     client.release();
   }
 };
+
+// Funtion to update order status
+export const updateOrderStatus = async (orderId, status) => {
+  const query = `
+    UPDATE orders
+    SET status = $1
+    WHERE id = $2::uuid
+    RETURNING id, user_id, total_amount, status, shipping_address, created_at;
+  `;
+  const res = await pool.query(query, [status, orderId]);
+  return res.rows[0] || null;
+};

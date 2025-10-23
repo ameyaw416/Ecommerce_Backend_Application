@@ -68,3 +68,30 @@ export const getOrderById = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// Admin: update order status
+export const updateOrderStatus = async (req, res) => {
+  const { orderId } = req.params;
+  const { status } = req.body;
+
+  const allowedStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+
+  if (!status || typeof status !== 'string') {
+    return res.status(400).json({ error: 'Status is required and must be a string' });
+  }
+
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({ error: `Invalid status. Allowed: ${allowedStatuses.join(', ')}` });
+  }
+
+  try {
+    const updated = await orderModel.updateOrderStatus(orderId, status);
+    if (!updated) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    res.status(200).json({ message: 'Order status updated', order: updated });
+  } catch (error) {
+    console.error('Error updating order status:', error && error.stack ? error.stack : error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
