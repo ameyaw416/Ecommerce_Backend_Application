@@ -2,7 +2,7 @@
 // import necessary modules and controllers
 import { createOrder, getOrdersByUser,getAllOrders, getOrderById, updateOrderStatus } from '../controllers/orderController.js';
 import verifyAuth from '../middlewares/verifyAuthMiddleware.js';
-import authorizeAdmin from '../middlewares/authorizeAdminMiddleware.js';
+import verifyAdmin from '../middlewares/verifyAdminMiddleware.js';
 
 import express from 'express';
 
@@ -19,8 +19,12 @@ router.get('/my-orders', getOrdersByUser);
 //Route to get all orders (admin) - Uncomment if needed
 router.get('/', getAllOrders);
 
-// Route to update order status (admin)
-router.put('/:orderId/status', authorizeAdmin, updateOrderStatus);
+
+// Admin-only: get all orders
+router.get('/', verifyAdmin, getAllOrders);
+
+// Admin-only: update order status
+router.put('/:orderId/status', verifyAdmin, updateOrderStatus);
 
 
 // Route to get a specific order by ID
