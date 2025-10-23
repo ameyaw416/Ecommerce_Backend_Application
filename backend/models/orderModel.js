@@ -12,13 +12,51 @@ export const createOrder = async (userId, items, shippingAddress) => {
       throw new Error('items must be a non-empty array');
     }
 
-    // Compute total using unit_price
+    // We'll compute totalAmount using product prices from DB to avoid trusting client prices.
     let totalAmount = 0;
+
+    // Prepare to insert order after validations
+    // First, for each item, lock product row and check stock & get price
+    // We'll collect the product data so we can insert order_items and update stock
+    const productDataById = new Map();
+
     for (const item of items) {
-      if (!item.productId || !item.quantity || item.unit_price == null) {
-        throw new Error('Each item must have productId, quantity and unit_price');
+      if (!item.productId || !item.quantity) {
+        throw new Error('Each item must have productId and quantity');
       }
-      totalAmount += Number(item.unit_price) * Number(item.quantity);
+
+      // Lock the product row to prevent concurrent modifications
+      const productRes = await client.query(
+        'SELECT id, name, price, stock FROM products WHERE id = $1::uuid FOR UPDATE',
+        [item.productId]
+      );
+
+      if (!productRes.rows.length) {
+        throw new Error(`Product not found: ${item.productId}`);
+      }
+
+      const product = productRes.rows[0];
+      const qty = Number(item.quantity);
+
+      if (!Number.isInteger(qty) || qty <= 0) {
+        throw new Error(`Invalid quantity for product ${item.productId}`);
+      }
+
+      if (product.stock == null || Number(product.stock) < qty) {
+        throw new Error(`Insufficient stock for product ${product.id} (${product.name})`);
+      }
+
+      // Use product.price as unit_price (safe, authoritative)
+      const unitPrice = Number(product.price);
+
+      totalAmount += unitPrice * qty;
+
+      productDataById.set(item.productId, {
+        id: product.id,
+        name: product.name,
+        unitPrice,
+        qty
+      });
     }
 
     // Ensure shippingAddress is JSON: if it's a string, wrap into an object; otherwise stringify object
@@ -35,10 +73,16 @@ export const createOrder = async (userId, items, shippingAddress) => {
     const order = orderInsert.rows[0];
     const orderId = order.id;
 
-    // Insert order items using unit_price column
+    // Insert order items and decrement stock
     const insertItemText = 'INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES ($1::uuid, $2::uuid, $3, $4)';
-    for (const item of items) {
-      await client.query(insertItemText, [orderId, item.productId, item.quantity, item.unit_price]);
+    const updateStockText = 'UPDATE products SET stock = stock - $1 WHERE id = $2::uuid';
+
+    for (const [productId, pd] of productDataById) {
+      // insert item using the db price
+      await client.query(insertItemText, [orderId, pd.id, pd.qty, pd.unitPrice]);
+
+      // decrement stock (we already locked row earlier)
+      await client.query(updateStockText, [pd.qty, pd.id]);
     }
 
     // Clear user's cart (optional behavior kept as before)
@@ -58,85 +102,4 @@ export const createOrder = async (userId, items, shippingAddress) => {
   } finally {
     client.release();
   }
-};
-// Function to get all orders (admin)
-export const getAllOrders = async () => {
-  const query = `
-    SELECT 
-      o.id, o.user_id, o.total_amount, o.status, o.shipping_address, o.created_at,
-      json_agg(
-        json_build_object(
-          'id', oi.id,
-          'product_id', oi.product_id,
-          'product_name', p.name,
-          'quantity', oi.quantity,
-          'unit_price', oi.unit_price
-        )
-      ) as items
-    FROM orders o
-    LEFT JOIN order_items oi ON o.id = oi.order_id
-    LEFT JOIN products p ON oi.product_id = p.id
-    GROUP BY o.id
-    ORDER BY o.created_at DESC;
-  `;
-  const res = await pool.query(query);
-  return res.rows;
-};
-
-// Function to get orders by user
-export const getOrdersByUser = async (userId) => {
-  const query = `
-    SELECT 
-      o.id, 
-      o.user_id, 
-      o.total_amount, 
-      o.status, 
-      o.shipping_address,
-      o.created_at,
-      json_agg(
-        json_build_object(
-          'id', oi.id,
-          'product_id', oi.product_id,
-          'product_name', p.name,
-          'quantity', oi.quantity,
-          'unit_price', oi.unit_price
-        )
-      ) as items
-    FROM orders o
-    LEFT JOIN order_items oi ON o.id = oi.order_id
-    LEFT JOIN products p ON oi.product_id = p.id
-    WHERE o.user_id = $1::uuid
-    GROUP BY o.id
-    ORDER BY o.created_at DESC
-  `;
-  const res = await pool.query(query, [userId]);
-  return res.rows;
-};
-
-export const getOrderById = async (orderId, userId) => {
-  const query = `
-    SELECT 
-      o.id, 
-      o.user_id, 
-      o.total_amount, 
-      o.status, 
-      o.shipping_address,
-      o.created_at,
-      json_agg(
-        json_build_object(
-          'id', oi.id,
-          'product_id', oi.product_id,
-          'product_name', p.name,
-          'quantity', oi.quantity,
-          'unit_price', oi.unit_price
-        )
-      ) as items
-    FROM orders o
-    LEFT JOIN order_items oi ON o.id = oi.order_id
-    LEFT JOIN products p ON oi.product_id = p.id
-    WHERE o.id = $1::uuid AND o.user_id = $2::uuid
-    GROUP BY o.id
-  `;
-  const res = await pool.query(query, [orderId, userId]);
-  return res.rows[0] || null;
 };
