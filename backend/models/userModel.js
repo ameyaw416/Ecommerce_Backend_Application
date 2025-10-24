@@ -2,8 +2,20 @@ import pool from "../config/db.js";
 
 // Function to get all users
 export const getAllUsers = async () => {
-  const result = await pool.query('SELECT id, username, email, created_at FROM users');
-  return result.rows;
+  const res = await pool.query('SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC;');
+  return res.rows;
+};
+
+export const updateUserRole = async (userId, newRole) => {
+  const allowed = ['user', 'admin'];
+  if (!allowed.includes(newRole)) return null;
+
+  const res = await pool.query(
+    'UPDATE users SET role = $1 WHERE id = $2::uuid RETURNING id, username, email, role, created_at;',
+    [newRole, userId]
+  );
+
+  return res.rows[0] || null;
 };
 
 // Function to get a user by ID

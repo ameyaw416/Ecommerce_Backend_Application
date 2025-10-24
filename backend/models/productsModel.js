@@ -50,3 +50,62 @@ export const deleteProductById = async (id) => {
   );
   return result.rowCount > 0;
 };
+
+
+// Set an exact stock count (e.g., set to 100)
+export const setProductStock = async (productId, newStock) => {
+  const result = await pool.query(
+    `UPDATE products
+     SET stock = $1
+     WHERE id = $2::uuid
+     RETURNING *;`,
+    [newStock, productId]
+  );
+  return result.rows[0] || null;
+};
+
+// Change stock by a delta (can be positive or negative)
+// Ensures stock never drops below zero.
+export const changeProductStock = async (productId, delta) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const selectRes = await client.query(
+      'SELECT id, stock FROM products WHERE id = $1::uuid FOR UPDATE;',
+      [productId]
+    );
+
+    if (selectRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const currentStock = Number(selectRes.rows[0].stock || 0);
+    const newStock = currentStock + Number(delta);
+
+    if (newStock < 0) {
+      await client.query('ROLLBACK');
+      const err = new Error('Insufficient stock for this operation');
+      err.code = 'INSUFFICIENT_STOCK';
+      throw err;
+    }
+
+    const updateRes = await client.query(
+      `UPDATE products
+       SET stock = $1
+       WHERE id = $2::uuid
+       RETURNING *;`,
+      [newStock, productId]
+    );
+
+    await client.query('COMMIT');
+    return updateRes.rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+};

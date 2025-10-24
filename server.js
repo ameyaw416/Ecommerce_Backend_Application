@@ -19,6 +19,8 @@ import usersRoute from './backend/routes/usersRoute.js';
 import productsRoute from './backend/routes/productsRoute.js';
 import cartRoute from './backend/routes/cartRoute.js';
 import orderRoute from './backend/routes/orderRoute.js';
+import adminInventoryRoute from './backend/routes/adminInventoryRoute.js';
+import adminUserRoute from './backend/routes/adminUserRoute.js';
 
 
 
@@ -44,6 +46,8 @@ app.use('/api/users', verifyAuth, usersRoute);
 app.use('/api/products', verifyAuth, productsRoute);
 app.use('/api/cart', verifyAuth, cartRoute);
 app.use('/api/orders', verifyAuth, orderRoute);
+app.use('/api/admin/inventory',verifyAuth, adminInventoryRoute);
+app.use('/api/admin', verifyAuth, adminUserRoute);
 
 // Error handling middleware
 app.use(errorHandling);
