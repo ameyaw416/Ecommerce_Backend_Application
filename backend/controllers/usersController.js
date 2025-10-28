@@ -98,3 +98,20 @@ export const deleteUser = async (req, res, next) => {
     next(error);
   }
 };
+
+// Admin controller to get all users with filtering, pagination, sorting
+export const adminGetUsers = async (req, res, next) => {
+  try {
+    const { page, limit, search, sortBy, sortDir, created_from, created_to } = req.query;
+
+    const result = await userModel.getUsersFiltered({
+      page, limit, search, sortBy, sortDir, created_from, created_to,
+    });
+
+    const links = buildPageLinks(req, result.pagination.page, result.pagination.pages);
+
+    res.status(200).json({ ...result, links });
+  } catch (err) {
+    next(err);
+  }
+};

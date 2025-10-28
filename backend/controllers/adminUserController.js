@@ -1,13 +1,30 @@
 import * as userModel from '../models/userModel.js';
 
-// Admin controller to get all users
-export const adminGetUsers = async (req, res) => {
+// Helper to build next/prev links (keeps your style)
+const buildPageLinks = (req, page, pages) => {
+  const url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`);
+  const setPage = (p) => { url.searchParams.set('page', String(p)); return url.toString(); };
+
+  const links = {};
+  if (page > 1) links.prev = setPage(page - 1);
+  if (page < pages) links.next = setPage(page + 1);
+  return links;
+};
+
+// Admin controller to get all users with filtering, pagination, sorting
+export const adminGetUsers = async (req, res, next) => {
   try {
-    const users = await userModel.getAllUsers();
-    res.status(200).json(users);
+    const { page, limit, search, sortBy, sortDir, created_from, created_to } = req.query;
+
+    const result = await userModel.getUsersFiltered({
+      page, limit, search, sortBy, sortDir, created_from, created_to,
+    });
+
+    const links = buildPageLinks(req, result.pagination.page, result.pagination.pages);
+
+    res.status(200).json({ ...result, links });
   } catch (err) {
-    console.error('Error fetching users (admin):', err && err.stack ? err.stack : err);
-    res.status(500).json({ error: 'Internal server error' });
+    next(err);
   }
 };
 
@@ -46,3 +63,4 @@ export const adminGetUserRoleHistory = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+

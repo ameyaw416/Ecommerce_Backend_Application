@@ -105,7 +105,71 @@ export const deleteUserById = async (id) => {
   await pool.query('DELETE FROM users WHERE id = $1', [id]);
 };
 
-export default { getAllUsers, getUserById, getUserByEmail, updateUserById, deleteUserById}; 
+// Get users with filters, search, sort, pagination
+export const getUsersFiltered = async ({
+  page = 1,
+  limit = 10,
+  search = '',
+  sortBy = 'created_at',
+  sortDir = 'desc',
+  created_from = null,
+  created_to = null,
+}) => {
+  const allowedSort = new Set(['created_at', 'email', 'username']);
+  const dir = String(sortDir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const sortCol = allowedSort.has(sortBy) ? sortBy : 'created_at';
+
+  const where = [];
+  const params = [];
+  let idx = 1;
+
+  if (search) {
+    where.push(`(username ILIKE $${idx} OR email ILIKE $${idx})`);
+    params.push(`%${search}%`);
+    idx++;
+  }
+
+  if (created_from) {
+    where.push(`created_at >= $${idx}`);
+    params.push(new Date(created_from));
+    idx++;
+  }
+
+  if (created_to) {
+    where.push(`created_at < $${idx}`);
+    params.push(new Date(created_to));
+    idx++;
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const limitNum = Math.max(1, Math.min(100, Number(limit) || 10));
+  const pageNum = Math.max(1, Number(page) || 1);
+  const offset = (pageNum - 1) * limitNum;
+
+  const q = `
+    SELECT id, username, email, role, created_at,
+           COUNT(*) OVER() AS total_count
+    FROM users
+    ${whereSql}
+    ORDER BY ${sortCol} ${dir}
+    LIMIT $${idx} OFFSET $${idx + 1};
+  `;
+  params.push(limitNum, offset);
+
+  const res = await pool.query(q, params);
+  const total = res.rows.length ? Number(res.rows[0].total_count) : 0;
+  const pages = Math.max(1, Math.ceil(total / limitNum));
+
+  return {
+    data: res.rows.map(({ total_count, ...r }) => r),
+    pagination: { page: pageNum, limit: limitNum, total, pages },
+  };
+};
+
+
+
+export default { getAllUsers, getUserById, getUserByEmail, updateUserById, deleteUserById, getUsersFiltered }; 
 
 
 

@@ -8,7 +8,7 @@ const router = express.Router();
 // Protect all admin user routes
 router.use(verifyAuth, verifyAdmin);
 
-router.get('/users', adminGetUsers);
+router.get('/users', adminGetUsers, adminGetUsers);
 router.put('/users/:id/role', adminUpdateUserRole);
 // GET /api/admin/users/:id/role-history
 router.get('/users/:id/role-history', verifyAuth, verifyAdmin, adminGetUserRoleHistory);

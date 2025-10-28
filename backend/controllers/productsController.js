@@ -1,5 +1,15 @@
 // create controller function responses for products
-import {findAllProducts,findProductById, createNewProduct, updateProductById,deleteProductById} from '../models/productsModel.js';
+import {findAllProducts,findProductById, createNewProduct, updateProductById,deleteProductById, getProductsFiltered} from '../models/productsModel.js';
+
+
+const buildPageLinks = (req, page, pages) => {
+  const url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`);
+  const setPage = (p) => { url.searchParams.set('page', String(p)); return url.toString(); };
+  const links = {};
+  if (page > 1) links.prev = setPage(page - 1);
+  if (page < pages) links.next = setPage(page + 1);
+  return links;
+};
 
 // Controller to get all products
 export const getAllProducts = async (req, res, next) => {
@@ -63,3 +73,23 @@ export const deleteProduct = async (req, res, next) => {
     }
 };
 
+
+export const listProducts = async (req, res, next) => {
+  try {
+    const {
+      page, limit, search, minPrice, maxPrice, inStock,
+      sortBy, sortDir, created_from, created_to
+    } = req.query;
+
+    const result = await getProductsFiltered({
+      page, limit, search, minPrice, maxPrice, inStock,
+      sortBy, sortDir, created_from, created_to
+    });
+
+    const links = buildPageLinks(req, result.pagination.page, result.pagination.pages);
+
+    res.status(200).json({ ...result, links });
+  } catch (err) {
+    next(err);
+  }
+};

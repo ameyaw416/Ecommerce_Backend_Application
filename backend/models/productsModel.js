@@ -109,3 +109,88 @@ export const changeProductStock = async (productId, delta) => {
     client.release();
   }
 };
+
+
+// List products with filters, search, sort, pagination, price + date range
+export const getProductsFiltered = async ({
+  page = 1,
+  limit = 10,
+  search = '',
+  minPrice = null,
+  maxPrice = null,
+  inStock = null, // 'true' | 'false' | boolean
+  sortBy = 'created_at',
+  sortDir = 'desc',
+  created_from = null,
+  created_to = null,
+}) => {
+  const allowedSort = new Set(['created_at', 'name', 'price', 'stock']);
+  const dir = String(sortDir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const sortCol = allowedSort.has(sortBy) ? sortBy : 'created_at';
+
+  const where = [];
+  const params = [];
+  let idx = 1;
+
+  if (search) {
+    where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`);
+    params.push(`%${search}%`);
+    idx++;
+  }
+
+  if (minPrice != null) {
+    where.push(`price >= $${idx}`);
+    params.push(Number(minPrice));
+    idx++;
+  }
+
+  if (maxPrice != null) {
+    where.push(`price <= $${idx}`);
+    params.push(Number(maxPrice));
+    idx++;
+  }
+
+  if (inStock === 'true' || inStock === true) {
+    where.push(`stock > 0`);
+  } else if (inStock === 'false' || inStock === false) {
+    where.push(`stock = 0`);
+  }
+
+  if (created_from) {
+    where.push(`created_at >= $${idx}`);
+    params.push(new Date(created_from));
+    idx++;
+  }
+
+  if (created_to) {
+    where.push(`created_at < $${idx}`);
+    params.push(new Date(created_to));
+    idx++;
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const limitNum = Math.max(1, Math.min(100, Number(limit) || 10));
+  const pageNum = Math.max(1, Number(page) || 1);
+  const offset = (pageNum - 1) * limitNum;
+
+  const q = `
+    SELECT id, name, description, price, stock, image_url, created_at,
+           COUNT(*) OVER() AS total_count
+    FROM products
+    ${whereSql}
+    ORDER BY ${sortCol} ${dir}
+    LIMIT $${idx} OFFSET $${idx + 1};
+  `;
+  params.push(limitNum, offset);
+
+  const res = await pool.query(q, params);
+
+  const total = res.rows.length ? Number(res.rows[0].total_count) : 0;
+  const pages = Math.max(1, Math.ceil(total / limitNum));
+
+  return {
+    data: res.rows.map(({ total_count, ...r }) => r),
+    pagination: { page: pageNum, limit: limitNum, total, pages },
+  };
+};
