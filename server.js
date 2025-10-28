@@ -11,6 +11,7 @@ import createProductsTable from './backend/data/createProductsTable.js';
 import createCartsItemTable from './backend/data/createCartsItemTable.js';
 import createOrdersTable from './backend/data/createOrdersTable.js';
 import createOrderStatusHistoryTable from './backend/data/createOrderStatusHistoryTable.js';
+import createUserRoleHistoryTable from './backend/data/createUserRoleHistoryTable.js';
 import errorHandling from './backend/middlewares/errorHandlingMiddleware.js';
 import createOrderItemsTable from './backend/data/createOrderItemsTable.js';
 import authRoute from './backend/routes/authRoute.js';
@@ -21,6 +22,7 @@ import cartRoute from './backend/routes/cartRoute.js';
 import orderRoute from './backend/routes/orderRoute.js';
 import adminInventoryRoute from './backend/routes/adminInventoryRoute.js';
 import adminUserRoute from './backend/routes/adminUserRoute.js';
+
 
 
 
@@ -67,6 +69,7 @@ try {
   await createOrdersTable();
   await createOrderItemsTable();
   await createOrderStatusHistoryTable();
+  await createUserRoleHistoryTable();
 
   console.log("All tables initialized successfully.");
 } catch (err) {

@@ -16,7 +16,7 @@ export default function errorHandler(err, req, res, next) {
     NO_REFRESH: 401,
     INVALID_REFRESH: 401,
     INVALID_TOKEN: 401,
-    // add more mappings as needed
+    
   };
 
   // If error has a numeric status, prefer it

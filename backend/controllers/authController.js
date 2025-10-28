@@ -7,6 +7,33 @@ import { createAccessToken, createRefreshToken } from '../utils/tokenUtils.js';
 
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 10;
 
+// Helper: promote user to admin if email is in ADMIN_EMAILS
+const assignAdminRoleIfMatch = async (userId, email) => {
+  try {
+    const list = (process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (!email) return null;
+
+    if (list.includes(String(email).toLowerCase())) {
+      // force role = admin
+      const upd = await pool.query(
+        'UPDATE users SET role = $1 WHERE id = $2::uuid AND role <> $1 RETURNING role',
+        ['admin', userId]
+      );
+      if (upd.rows.length) return upd.rows[0].role; // became admin now
+    }
+
+    // return current role if not updated
+    const cur = await pool.query('SELECT role FROM users WHERE id = $1::uuid', [userId]);
+    return cur.rows[0]?.role || 'user';
+  } catch (e) {
+    console.error('assignAdminRoleIfMatch error:', e && e.stack ? e.stack : e);
+    return null;
+  }
+};
 
 
 // User registration Response
@@ -20,20 +47,25 @@ export const registerUser = async (req, res, next) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    //Hash password
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert new user into database
     const newUser = await pool.query(
-      'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING *',
+      'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email, role, created_at',
       [username, email, hashedPassword]
     );
 
-    res.status(201).json({ message: 'User registered successfully', user: newUser.rows[0] });
+    // ✅ Ensure role based on ADMIN_EMAILS
+    const ensuredRole = await assignAdminRoleIfMatch(newUser.rows[0].id, newUser.rows[0].email);
+    const safeUser = { ...newUser.rows[0], role: ensuredRole || newUser.rows[0].role };
+
+    res.status(201).json({ message: 'User registered successfully', user: safeUser });
   } catch (error) {
     next(error);
   }
 };
+
 
 // User login Response
 export const loginUser = async (req, res) => {
@@ -54,7 +86,11 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    const payload = { userId: user.id, email: user.email, role: user.role };
+    // ✅ Ensure role based on ADMIN_EMAILS (may promote)
+    const ensuredRole = await assignAdminRoleIfMatch(user.id, user.email);
+    const role = ensuredRole || user.role || 'user';
+
+    const payload = { userId: user.id, email: user.email, role };
 
     const accessToken = createAccessToken(payload);
     const refreshToken = createRefreshToken(payload);
@@ -71,7 +107,7 @@ export const loginUser = async (req, res) => {
     // Login successful
     res.status(200).json({
       message: 'Login successful',
-      user: {id: user.id, email: user.email},
+      user: { id: user.id, email: user.email, role },
       accessToken
     });
   } catch (error) {
@@ -79,6 +115,7 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 
 /// Refresh access token (reads refresh token from cookie)
@@ -94,39 +131,40 @@ export const refreshToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid or expired refresh token' });
     }
 
-    // Check if user still exists
-    const result = await pool.query('SELECT id, email FROM users WHERE id = $1', [payload.userId]);
+    // Check if user still exists (✅ select role too)
+    const result = await pool.query('SELECT id, email, role FROM users WHERE id = $1', [payload.userId]);
     if (result.rows.length === 0) {
       return res.status(401).json({ message: 'User no longer exists' });
     }
 
     const user = result.rows[0];
-    const newPayload = { userId: user.id, email: user.email };
 
+    // Optionally re-ensure admin role on refresh as well:
+    const ensuredRole = await assignAdminRoleIfMatch(user.id, user.email);
+    const role = ensuredRole || user.role || 'user';
+
+    const newPayload = { userId: user.id, email: user.email, role };
     const newAccessToken = createAccessToken(newPayload);
     const newRefreshToken = createRefreshToken(newPayload);
 
-    
-    {
-      // Rotate refresh token (optional but recommended)
-      res.cookie('jid', newRefreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/api/auth/refresh',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+    // Rotate refresh token (optional but recommended)
+    res.cookie('jid', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/api/auth/refresh',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
-      res.status(200).json({
-        accessToken: newAccessToken,
-        user: { id: user.id, email: user.email }
-      });
-    } 
-
+    res.status(200).json({
+      accessToken: newAccessToken,
+      user: { id: user.id, email: user.email, role }
+    });
   } catch (error) {
     next(error);
   }
-}; 
+};
+
 
 
 
