@@ -2,7 +2,8 @@
 import pool from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { createAccessToken, createRefreshToken } from '../utils/tokenUtils.js';
+import { createAccessToken, createRefreshToken} from '../utils/tokenUtils.js';
+import { hashResetToken, generateResetToken } from '../utils/passwordResetToken.js';
 
 
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 10;
@@ -23,7 +24,8 @@ const assignAdminRoleIfMatch = async (userId, email) => {
         'UPDATE users SET role = $1 WHERE id = $2::uuid AND role <> $1 RETURNING role',
         ['admin', userId]
       );
-      if (upd.rows.length) return upd.rows[0].role; // became admin now
+      if (upd.rows.length) 
+        return upd.rows[0].role; // became admin now
     }
 
     // return current role if not updated
@@ -48,7 +50,7 @@ export const registerUser = async (req, res, next) => {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     // Insert new user into database
     const newUser = await pool.query(
@@ -56,7 +58,7 @@ export const registerUser = async (req, res, next) => {
       [username, email, hashedPassword]
     );
 
-    // ✅ Ensure role based on ADMIN_EMAILS
+    // Ensure role based on ADMIN_EMAILS
     const ensuredRole = await assignAdminRoleIfMatch(newUser.rows[0].id, newUser.rows[0].email);
     const safeUser = { ...newUser.rows[0], role: ensuredRole || newUser.rows[0].role };
 
@@ -86,11 +88,11 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // ✅ Ensure role based on ADMIN_EMAILS (may promote)
+      // FIX: define role + payload BEFORE creating tokens
     const ensuredRole = await assignAdminRoleIfMatch(user.id, user.email);
     const role = ensuredRole || user.role || 'user';
-
     const payload = { userId: user.id, email: user.email, role };
+
 
     const accessToken = createAccessToken(payload);
     const refreshToken = createRefreshToken(payload);
@@ -131,7 +133,7 @@ export const refreshToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid or expired refresh token' });
     }
 
-    // Check if user still exists (✅ select role too)
+    // Check if user still exists ( select role too)
     const result = await pool.query('SELECT id, email, role FROM users WHERE id = $1', [payload.userId]);
     if (result.rows.length === 0) {
       return res.status(401).json({ message: 'User no longer exists' });
@@ -166,12 +168,118 @@ export const refreshToken = async (req, res, next) => {
 };
 
 
-
-
 // User logout response
 export const logoutUser = (req, res) => {
   // Clear cookie on logout
   res.clearCookie('jid', { path: '/api/auth/refresh' });
   res.status(200).json({ message: 'Logout successful' });
 };   
+
+// --- Forgot Password (public) ---
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(200).json({ message: 'If that account exists, a reset link has been sent.' });
+
+    const userRes = await pool.query('SELECT id, email FROM users WHERE email = $1', [email]);
+    if (!userRes.rows.length) {
+      return res.status(200).json({ message: 'If that account exists, a reset link has been sent.' });
+    }
+
+    const user = userRes.rows[0];
+    const raw = generateResetToken();               // 32 bytes hex
+    const tokenHash = hashResetToken(raw);
+    const ttlMinutes = parseInt(process.env.RESET_TOKEN_TTL_MIN || '15', 10);
+    const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
+
+    await pool.query(
+      `INSERT INTO password_resets (user_id, token_hash, expires_at, used)
+       VALUES ($1::uuid, $2, $3, FALSE)`,
+      [user.id, tokenHash, expiresAt]
+    );
+
+    const baseUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(raw)}`;
+
+    console.log(`[password reset] Send to ${user.email}: ${resetUrl}`);
+
+    return res.status(200).json({ message: 'If that account exists, a reset link has been sent.' });
+  } catch (err) {
+    console.error('forgotPassword error:', err?.stack || err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+   
+// --- Reset Password (public via token) ---
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'token and newPassword are required' });
+    }
+
+    const tokenHash = hashResetToken(token);
+
+    // Find valid token
+    const tRes = await pool.query(
+      `SELECT pr.id, pr.user_id, pr.expires_at, pr.used, u.email
+       FROM password_resets pr
+       JOIN users u ON u.id = pr.user_id
+       WHERE pr.token_hash = $1
+       ORDER BY pr.created_at DESC
+       LIMIT 1`,
+      [tokenHash]
+    );
+
+    if (tRes.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    const row = tRes.rows[0];
+    if (row.used) return res.status(400).json({ error: 'Reset token has already been used' });
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      return res.status(400).json({ error: 'Reset token has expired' });
+    }
+
+    // Update password
+    const rounds = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
+    const hash = await bcrypt.hash(newPassword, rounds);
+
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2::uuid', [hash, row.user_id]);
+    await pool.query('UPDATE password_resets SET used = TRUE WHERE id = $1::uuid', [row.id]);
+
+    return res.status(200).json({ message: 'Password has been reset successfully' });
+  } catch (err) {
+    console.error('resetPassword error:', err?.stack || err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// --- Change Password (authenticated) ---
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'currentPassword and newPassword are required' });
+    }
+
+    const r = await pool.query('SELECT id, password FROM users WHERE id = $1::uuid', [userId]);
+    if (!r.rows.length) return res.status(404).json({ error: 'User not found' });
+
+    const valid = await bcrypt.compare(currentPassword, r.rows[0].password);
+    if (!valid) return res.status(400).json({ error: 'Current password is incorrect' });
+
+    const rounds = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
+    const newHash = await bcrypt.hash(newPassword, rounds);
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2::uuid', [newHash, userId]);
+
+    return res.status(200).json({ message: 'Password changed successfully' });
+  } catch (err) {
+    console.error('changePassword error:', err?.stack || err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
 
