@@ -1,26 +1,30 @@
 // controllers/orderController.js
 import * as orderModel from '../models/orderModel.js';
 
+
 // Function to create a new order
 export const createOrder = async (req, res) => {
   const userId = req.user?.id; // Get from JWT token, not req.body
   const { items, shippingAddress } = req.body;
 
-
   try {
     const { order, orderId, totalAmount } = await orderModel.createOrder(userId, items, shippingAddress);
+
+    //Fetch hydrated order with items aggregated
+    const fullOrder = await orderModel.getOrderById(orderId, userId);
 
     res.status(201).json({
       message: 'Order created successfully',
       orderId,
       totalAmount,
-      order,
+      order: fullOrder || order, // fallback to header if for some reason the join returns null
     });
   } catch (error) {
     console.error('Error creating order (controller):', error && error.stack ? error.stack : error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 
 // Function to get all orders (admin)
 export const getAllOrders = async (req, res) => {

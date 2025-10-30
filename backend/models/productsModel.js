@@ -194,3 +194,38 @@ export const getProductsFiltered = async ({
     pagination: { page: pageNum, limit: limitNum, total, pages },
   };
 };
+
+// Bulk create products in a single transaction
+export const bulkCreateProducts = async (items) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const created = [];
+    for (const p of items) {
+      const q = `
+        INSERT INTO products (name, description, price, stock, image_url)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *;
+      `;
+      const r = await client.query(q, [
+        p.name,
+        p.description ?? null,
+        p.price,
+        p.stock,
+        p.image_url ?? null
+      ]);
+      created.push(r.rows[0]);
+    }
+
+    await client.query('COMMIT');
+    return created;
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+};
+
+

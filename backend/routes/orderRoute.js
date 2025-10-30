@@ -1,35 +1,21 @@
-// routes/orderRoute.js
-// import necessary modules and controllers
-import { createOrder, getOrdersByUser,getAllOrders, getOrderById, updateOrderStatus } from '../controllers/orderController.js';
+// backend/routes/orderRoute.js
+import express from 'express';
+import { createOrder, getOrdersByUser, getAllOrders, getOrderById, updateOrderStatus } from '../controllers/orderController.js';
 import verifyAuth from '../middlewares/verifyAuthMiddleware.js';
 import verifyAdmin from '../middlewares/verifyAdminMiddleware.js';
 
-import express from 'express';
-
 const router = express.Router();
-// Apply authentication middleware to all order routes
+
 router.use(verifyAuth);
 
-// Route to create a new order
+//user-only
 router.post('/', createOrder);
-
-// Route to get orders for a specific user
 router.get('/my-orders', getOrdersByUser);
 
-//Route to get all orders (admin) - Uncomment if needed
-router.get('/', getAllOrders);
-
-
-// Admin-only: get all orders
+// admin-only
 router.get('/', verifyAdmin, getAllOrders);
-
-// Admin-only: update order status
 router.put('/:orderId/status', verifyAdmin, updateOrderStatus);
 
-
-// Route to get a specific order by ID
 router.get('/:orderId', getOrderById);
 
-
-// export the router
 export default router;

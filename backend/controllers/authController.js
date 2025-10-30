@@ -89,22 +89,21 @@ export const loginUser = async (req, res) => {
     }
 
       // FIX: define role + payload BEFORE creating tokens
-    const ensuredRole = await assignAdminRoleIfMatch(user.id, user.email);
-    const role = ensuredRole || user.role || 'user';
-    const payload = { userId: user.id, email: user.email, role };
+ const ensuredRole = await assignAdminRoleIfMatch(user.id, user.email);
+const role = ensuredRole || user.role || 'user';
+const payload = { userId: user.id, email: user.email, role };
 
-
-    const accessToken = createAccessToken(payload);
-    const refreshToken = createRefreshToken(payload);
+const accessToken = createAccessToken(payload);
+const refreshToken = createRefreshToken(payload);
 
     // Set refresh token as HttpOnly cookie
-    res.cookie('jid', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // true in prod (HTTPS)
-      sameSite: 'strict',
-      path: '/api/auth/refresh', // only sent to this path
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+   res.cookie('jid', refreshToken, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  path: '/api/auth/refresh',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
 
     // Login successful
     res.status(200).json({
