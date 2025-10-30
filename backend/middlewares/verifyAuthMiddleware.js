@@ -9,10 +9,6 @@ export default function verifyAuth(req, res, next) {
     const token = authHeader.split(' ')[1]; // "Bearer <token>"
     if (!token) return res.status(401).json({ message: 'Malformed token' });
 
-    // DEBUG: log token and a short slice of the secret to confirm both exist
-    console.log('verifyAuth - token (first 20 chars):', token?.slice?.(0,20));
-    console.log('verifyAuth - secret present?', !!process.env.JWT_ACCESS_SECRET);
-
     const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
     req.user = { id: payload.userId, email: payload.email, role: payload.role || 'user'}; // attach user info to request
     next();
