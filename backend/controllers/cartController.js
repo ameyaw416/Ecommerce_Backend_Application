@@ -52,7 +52,10 @@ export const updateCartItemQuantity = async (req, res) => {
       return res.status(404).json({ error: 'Cart item not found' });
     }
 
-    res.status(200).json(updatedItem);
+    res.status(200).json({
+      message: 'Cart item updated successfully',
+      item: updatedItem,
+    });
   } catch (err) {
     console.error('Error updating cart item quantity:', err);
     res.status(500).json({ error: 'Internal server error' });
