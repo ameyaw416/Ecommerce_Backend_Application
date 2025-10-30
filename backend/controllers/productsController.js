@@ -22,6 +22,27 @@ const buildPageLinks = (req, page, pages) => {
 // Controller to get all products
 export const getAllProducts = async (req, res, next) => {
   try {
+    const filterKeys = [
+      'page',
+      'limit',
+      'search',
+      'minPrice',
+      'maxPrice',
+      'inStock',
+      'sortBy',
+      'sortDir',
+      'created_from',
+      'created_to',
+    ];
+
+    const hasFilters = Object.keys(req.query || {}).some((key) =>
+      filterKeys.includes(key)
+    );
+
+    if (hasFilters) {
+      return next();
+    }
+
     const products = await findAllProducts();
     res.status(200).json(products);
   } catch (err) {
