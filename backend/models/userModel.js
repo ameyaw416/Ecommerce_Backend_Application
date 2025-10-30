@@ -91,12 +91,39 @@ export const getUserByEmail = async (email) => {
 };
 
 //Function update by id
-export const updateUserById = async (id, username, email, password) => {
+export const updateUserById = async (id, fields = {}) => {
+  const { username, email, password } = fields;
+  const sets = [];
+  const values = [];
+  let idx = 1;
+
+  if (username !== undefined) {
+    sets.push(`username = $${idx++}`);
+    values.push(username);
+  }
+
+  if (email !== undefined) {
+    sets.push(`email = $${idx++}`);
+    values.push(email);
+  }
+
+  if (password !== undefined) {
+    sets.push(`password = $${idx++}`);
+    values.push(password);
+  }
+
+  if (!sets.length) {
+    const existing = await getUserById(id);
+    return existing || null;
+  }
+
+  values.push(id);
+
   const result = await pool.query(
-    'UPDATE users SET username = $1, email = $2, password = $3 WHERE id = $4 RETURNING id, username, email, created_at',
-    [username, email, password, id]
+    `UPDATE users SET ${sets.join(', ')} WHERE id = $${idx} RETURNING id, username, email, role, created_at`,
+    values
   );
-  return result.rows[0];
+  return result.rows[0] || null;
 };
 
 
@@ -170,6 +197,5 @@ export const getUsersFiltered = async ({
 
 
 export default { getAllUsers, getUserById, getUserByEmail, updateUserById, deleteUserById, getUsersFiltered }; 
-
 
 

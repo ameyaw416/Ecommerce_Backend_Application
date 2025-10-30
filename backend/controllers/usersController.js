@@ -49,14 +49,19 @@ export const updateUser = async (req, res, next) => {
   try {
     const userId = req.params.id;
     const { username, email, password } = req.body;
-    const hashedPassword = password ? await bcrypt.hash(password, BCRYPT_ROUNDS) : undefined;
+    const updates = {};
 
-    const updatedUser = await userModel.updateUserById(
-      userId,
-      username,
-      email,
-      hashedPassword
-    );
+    if (username !== undefined) updates.username = username;
+    if (email !== undefined) updates.email = email;
+    if (password) {
+      updates.password = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    }
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ message: 'No update fields provided' });
+    }
+
+    const updatedUser = await userModel.updateUserById(userId, updates);
 
     if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
@@ -73,14 +78,19 @@ export const updateMyProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { username, email, password } = req.body;
-    const hashedPassword = password ? await bcrypt.hash(password, BCRYPT_ROUNDS) : undefined;
+    const updates = {};
 
-    const updatedUser = await userModel.updateUserById(
-      userId,
-      username,
-      email,
-      hashedPassword
-    );
+    if (username !== undefined) updates.username = username;
+    if (email !== undefined) updates.email = email;
+    if (password) {
+      updates.password = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    }
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ message: 'No update fields provided' });
+    }
+
+    const updatedUser = await userModel.updateUserById(userId, updates);
 
     res.status(200).json(updatedUser);
   } catch (error) {
