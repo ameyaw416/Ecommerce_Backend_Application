@@ -15,12 +15,14 @@ import createUserRoleHistoryTable from './backend/data/createUserRoleHistoryTabl
 import createPasswordResetsTable from './backend/data/createPasswordResetsTable.js';
 import errorHandling from './backend/middlewares/errorHandlingMiddleware.js';
 import createOrderItemsTable from './backend/data/createOrderItemsTable.js';
+import createPaymentsTable from './backend/data/createPaymentTable.js';
 import authRoute from './backend/routes/authRoute.js';
 import verifyAuth from './backend/middlewares/verifyAuthMiddleware.js';
 import usersRoute from './backend/routes/usersRoute.js';
 import productsRoute from './backend/routes/productsRoute.js';
 import cartRoute from './backend/routes/cartRoute.js';
 import orderRoute from './backend/routes/orderRoute.js';
+import paymentRoute from './backend/routes/paymentRoute.js';
 import adminInventoryRoute from './backend/routes/adminInventoryRoute.js';
 import adminUserRoute from './backend/routes/adminUserRoute.js';
 import bcrypt from 'bcryptjs';
@@ -53,6 +55,7 @@ app.use('/api/cart', verifyAuth, cartRoute);
 app.use('/api/orders', verifyAuth, orderRoute);
 app.use('/api/admin/inventory',verifyAuth, adminInventoryRoute);
 app.use('/api/admin', verifyAuth, adminUserRoute);
+app.use('/api/payments', verifyAuth, paymentRoute);
 
 // Error handling middleware
 app.use(errorHandling);
@@ -130,6 +133,7 @@ try {
   await createOrderStatusHistoryTable();
   await createUserRoleHistoryTable();
   await createPasswordResetsTable();
+  await createPaymentsTable();
 
   await ensureInitialAdmin();
 
