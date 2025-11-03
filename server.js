@@ -44,7 +44,7 @@ app.use(express.json());
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(cookieParser());
-//app.use(generalLimiter); // Apply general rate limiter to all requests
+app.use(generalLimiter); // Apply general rate limiter to all requests
 
 // Routes
 //app.use(verifyAuth); // Protect all routes below this line
