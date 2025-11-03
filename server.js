@@ -26,6 +26,7 @@ import paymentRoute from './backend/routes/paymentRoute.js';
 import adminInventoryRoute from './backend/routes/adminInventoryRoute.js';
 import adminUserRoute from './backend/routes/adminUserRoute.js';
 import bcrypt from 'bcryptjs';
+import botGuard from './backend/middlewares/botGuardMiddleware.js';
 
 
 
@@ -36,6 +37,23 @@ dotenv.config();
 
 // Initialize Express app
 const app = express();
+const rawTrustProxy = process.env.TRUST_PROXY;
+let trustProxySetting = 'loopback';
+
+if (rawTrustProxy !== undefined) {
+  const normalized = rawTrustProxy.trim().toLowerCase();
+  if (normalized === 'true') {
+    trustProxySetting = true;
+  } else if (normalized === 'false') {
+    trustProxySetting = false;
+  } else if (/^\d+$/.test(normalized)) {
+    trustProxySetting = Number(normalized);
+  } else {
+    trustProxySetting = rawTrustProxy;
+  }
+}
+
+app.set('trust proxy', trustProxySetting);
 const PORT = process.env.PORT || 5000;
 
 // Middleware
@@ -45,6 +63,20 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(generalLimiter); // Apply general rate limiter to all requests
+app.use(botGuard({
+  // tweak if needed
+  windowMs: 10_000,
+  maxHits: 30,
+  scoreThreshold: 4,
+  blockForMs: 30_000,
+  watchPaths: [
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/products',
+    '/api/orders',
+    '/api/cart'
+  ]
+}));
 
 // Routes
 //app.use(verifyAuth); // Protect all routes below this line

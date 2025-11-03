@@ -25,6 +25,8 @@ export const createPaymentIntent = async (req, res, next) => {
     if (!orderId) return res.status(400).json({ error: 'orderId is required' });
 
     const { order, error } = await ensureOrderOwnedAndTotal(orderId, userId);
+    if (error === 'Order not found') return res.status(404).json({ error });
+    if (error === 'Forbidden') return res.status(403).json({ error });
     if (error) return res.status(400).json({ error });
 
     // Create a DB record first
@@ -115,6 +117,8 @@ export const getPaymentsForOrder = async (req, res, next) => {
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { order, error } = await ensureOrderOwnedAndTotal(orderId, userId);
+    if (error === 'Order not found') return res.status(404).json({ error });
+    if (error === 'Forbidden') return res.status(403).json({ error });
     if (error) return res.status(400).json({ error });
 
     const rows = await paymentModel.getPaymentsByOrder(order.id);

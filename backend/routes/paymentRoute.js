@@ -6,7 +6,7 @@ import {createPaymentIntent,confirmMockPayment,getPaymentsForOrder,getPaymentsFo
 const router = express.Router();
 
 // Protect all payment routes
-router.use(verifyAuth);
+
 
 // Create a payment intent for an order
 router.post('/intents', createPaymentIntent);
